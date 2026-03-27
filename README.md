@@ -27,6 +27,7 @@ sequenceDiagram
     end
 
     App->>ProductService: POST /v1/product/auction
+    Note over ProductService: Transforms DTO to Entity using MapStruct
     ProductService->>RedisCache: Create Auction Cache (For fast active bidding)
     ProductService->>Database: Save Product Listing
     ProductService->>Kafka: Publish "Auction Created Event"
