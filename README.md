@@ -53,8 +53,9 @@ The system is designed to handle high-traffic bidding environments effortlessly:
 
 #### A. Auth Service (`authService`)
 **Responsibility**: Secure authentication, Token Generation, Credential Storage.
-- **Endpoints**: Handles student signup, login, and token issuance. enforces university-domain emails.
-- **Producer**: Publishes events to Kafka upon user signup to inform downstream services.
+- **Endpoints**: Handles student signup, login, and token issuance. Enforces university-domain emails using specialized validation structures (e.g. `UserRegistrationRequest`).
+- **Producer**: Publishes events to Kafka upon user signup to inform downstream services. Built with transactional consistency, ensuring successful registration rollbacks if Kafka event parsing fails.
+- **Data Integrity**: Uses synchronized UUID database generation and avoids transmitting sensitive credentials like passwords over message buses.
 
 #### B. User Service (`userService`)
 **Responsibility**: Managing User Profiles and contact information.
@@ -63,6 +64,9 @@ The system is designed to handle high-traffic bidding environments effortlessly:
 
 #### C. Product/Auction Service (`productService`)
 **Responsibility**: Core listings logistics, placing bids, and matchmaking buyers & sellers.
+- **Robust Validation**: Enforces strict backend validation annotations for robust DTO bindings (e.g. tracking constraints for pricing, auction end times, and seller relationships).
+- **History Retention**: Enforces soft deletion by transitioning entity statuses to `DELETED` instead of destroying active database rows, thus retaining auction history.
+- **Entity Pre-Processing**: Integrates into JPA `@PrePersist` lifecycles to bootstrap entity properties securely upon creation.
 - **Real-Time Bidding**: Uses Redis to lock, update, and fetch the highest bids atomically, preventing race conditions during intense last-second bidding wars.
 - **Database**: Stores completed auctions and product details robustly in a relational database.
 

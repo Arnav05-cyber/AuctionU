@@ -52,4 +52,11 @@ public class Product {
     @Enumerated(EnumType.STRING)
     private Status status;
 
+    @PrePersist
+    protected void onCreate() {
+        if(this.currentHighestBid == null) {
+            this.currentHighestBid = this.startingPrice;
+        }
+    }
+
 }
