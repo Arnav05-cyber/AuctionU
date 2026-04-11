@@ -1,6 +1,7 @@
 package com.example.org.entities;
 
 
+import com.example.org.enums.SaleType;
 import com.example.org.enums.Status;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -22,41 +23,41 @@ public class Product {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "product_id")
     private Long id;
 
-    @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "category")
     private String category;
 
-    @Column(name = "starting_price", nullable = false)
+    // Prices
     private BigDecimal startingPrice;
-
-    @Column(name = "current_highest_bid")
     private BigDecimal currentHighestBid;
+    private BigDecimal buyItNowPrice; // Changed from Double
 
-    @Column(name = "auction_end_time", nullable = false)
-    private LocalDateTime auctionEndTime;
-
-    @Column(name = "seller_id", nullable = false)
-    private Long sellerId;
-
-    @Column(name = "created_at", nullable = false)
+    // Times
+    private LocalDateTime auctionEndTime; // Remove nullable=false
     private LocalDateTime createdAt;
+
+    // Identity (Matches Gateway/Auth UUIDs)
+    private String sellerId; // Changed from Long
+    private String highestBidderId; // Added this
 
     @Enumerated(EnumType.STRING)
     private Status status;
 
+    @Enumerated(EnumType.STRING)
+    private SaleType type;
+
+    private Integer quantity; // For Marketplace items
+
     @PrePersist
     protected void onCreate() {
-        if(this.currentHighestBid == null) {
+        this.createdAt = LocalDateTime.now();
+        if(this.currentHighestBid == null && this.startingPrice != null) {
             this.currentHighestBid = this.startingPrice;
         }
     }
-
 }

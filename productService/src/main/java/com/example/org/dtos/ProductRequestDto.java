@@ -1,9 +1,9 @@
 package com.example.org.dtos;
 
-import jakarta.validation.constraints.Future;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+
 import lombok.Builder;
 import lombok.Setter;
 
@@ -24,14 +24,19 @@ public class ProductRequestDto {
     private String description;
     private String category;
 
-    @NotNull(message = "Starting price is mandatory")
-    @Positive(message = "Starting price must be a positive value")
-    private BigDecimal startingPrice;
+    // Type of sale: AUCTION or FIXED_PRICE
+    @NotNull(message = "Sale type is mandatory")
+    private com.example.org.enums.SaleType type;
 
-    @NotNull(message = "Auction end time is mandatory")
-    @Future(message = "Auction end time must be in the future")
+    // --- Auction Specific Fields ---
+    // These should not be @NotNull anymore because they are null for FIXED_PRICE
+    private BigDecimal startingPrice;
     private LocalDateTime auctionEndTime;
 
-    @NotNull(message = "Seller ID is mandatory") // Fixed from @NotBlank
-    private Long sellerId;
+    // --- Marketplace Specific Fields ---
+    private Integer quantity; // How many items are in stock
+    private BigDecimal buyItNowPrice; // The fixed price
+
+    @NotBlank(message = "Seller ID is mandatory")
+    private String sellerId;
 }
