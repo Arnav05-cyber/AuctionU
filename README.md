@@ -1,10 +1,10 @@
 # AuctionU - University Marketplace Platform
 
-Welcome to **AuctionU**, a robust, event-driven microservices architecture designed for a highly scalable university marketplace platform. It provides a secure space for students to list items for direct sale, bid on auctions, and trade within the university community. The system leverages modern Java/Spring Boot practices, reactive caching, real-time WebSocket broadcasting, distributed lock scheduling, and asynchronous messaging.
+Welcome to **AuctionU**, a robust, event-driven microservices architecture designed for a highly scalable university marketplace platform. It provides a secure space for students to list items for direct sale, bid on auctions, and trade within the university community. The system leverages modern Java/Spring Boot practices, reactive caching, real-time WebSocket broadcasting, distributed lock scheduling, asynchronous messaging, and transactional email notifications.
 
 ## 🚀 System Architecture
 
-The system is split into multiple microservices: `gateway`, `authService`, `userService`, and `productService`, decoupled asynchronously via **Apache Kafka** using the **Transactional Outbox Pattern**, and backed by **Redis** and **MySQL/PostgreSQL**.
+The system is split into multiple microservices: `gateway`, `authService`, `userService`, `productService`, and `notificationService`, decoupled asynchronously via **Apache Kafka** using the **Transactional Outbox Pattern**, and backed by **Redis** and **MySQL/PostgreSQL**. Services are discovered and load-balanced via **Eureka**.
 
 ```mermaid
 sequenceDiagram
@@ -15,6 +15,8 @@ sequenceDiagram
     participant UserService
     participant ProductService as ProductService
     participant OutboxProcessor
+    participant NotificationService
+    participant MailServer as SMTP Server
     participant Redis
     participant Database
 
@@ -53,6 +55,13 @@ sequenceDiagram
         ProductService->>Database: Find expired ACTIVE auctions
         ProductService->>Database: Mark SOLD (winner) or INACTIVE (no bids)
         ProductService->>Database: Write AUCTION_CLOSED / AUCTION_EXPIRED to Outbox
+    end
+
+    par Async Email Notifications
+        Kafka->>NotificationService: Consume "product-events"
+        NotificationService->>UserService: Feign GET /api/v1/users/{userId} (Eureka-resolved)
+        UserService-->>NotificationService: UserResponseDto (name, email)
+        NotificationService->>MailServer: Send transactional email via SMTP
     end
 ```
 
@@ -110,6 +119,14 @@ When a bid is placed, the update is instantly pushed to all connected clients wa
 - **Kafka Topic**: All product domain events are published to the `product-events` Kafka topic, configured via `KafkaConfig`.
 - **MapStruct**: Uses MapStruct for clean, compile-time-safe DTO ↔ Entity mapping.
 
+#### E. Notification Service (`notificationService`)
+**Responsibility**: Consuming product domain events from Kafka and sending transactional email notifications to users.
+- **Kafka Consumer**: `NotificationConsumer` listens to the `product-events` topic (consumer group: `notification-group`). On receiving a `ProductEvent`, it resolves the associated user's contact information and dispatches a contextual email.
+- **Feign Client (Eureka-Discovered)**: Uses **Spring Cloud OpenFeign** with a `@FeignClient(name = "USER-SERVICE")` to call the `userService` (`GET /api/v1/users/{id}`). Service discovery is handled by **Eureka**, so no hardcoded URLs are required — the client automatically resolves the `USER-SERVICE` instance.
+- **Email Dispatch**: Uses **Spring Boot Mail** (`JavaMailSender`) configured with Gmail SMTP (`smtp.gmail.com:587`, STARTTLS). Sends `SimpleMailMessage` notifications with contextual subjects ("Bid Confirmed", "Order Confirmation", "Winner!") and personalized bodies.
+- **Event Handling**: Supports `BID_PLACED`, `PURCHASE`, and `AUCTION_CLOSED` event types, generating event-specific email subjects and bodies for each.
+- **Fault Tolerance**: Wraps the entire consume→resolve→send flow in a try/catch, logging failures without crashing the consumer, ensuring Kafka offset progress continues.
+
 ## 📦 Components Reference
 
 ### productService
@@ -128,6 +145,16 @@ When a bid is placed, the update is instantly pushed to all connected clients wa
 | `RedisSubscriber` | `@Service` | Listens to the Redis `auction-updates` Pub/Sub channel. Parses messages and forwards bid updates to the correct STOMP WebSocket topic (`/topic/product/{productId}`). |
 | `ProductServiceImpl` | `@Service` | Core business logic. On `placeBid`, atomically updates the bid in the DB, writes to the outbox, and publishes to Redis. On `purchaseProduct`, decrements quantity, sets `SOLD` when stock hits 0, and writes to outbox. |
 
+### notificationService
+
+| Component | Type | Description |
+|---|---|---|
+| `NotificationServiceApplication` | `@SpringBootApplication` | Entry point. Annotated with `@EnableFeignClients` to activate Feign client scanning. |
+| `NotificationConsumer` | `@Service` | Kafka listener on the `product-events` topic (group: `notification-group`). Resolves user info via `UserClient`, constructs event-specific email content, and dispatches via `JavaMailSender`. |
+| `UserClient` | `@FeignClient` | Declarative REST client targeting `USER-SERVICE` (Eureka-discovered). Calls `GET /api/v1/users/{id}` to fetch user profile (name, email). |
+| `ProductEvent` | DTO | Mirrors the product service's event payload. Fields: `eventType`, `productId`, `title`, `amount`, `userId`, `sellerId`, `timeStamp`. |
+| `UserResponseDto` | DTO | Response model from `userService`. Fields: `id`, `name`, `email`. |
+
 ### gateway
 
 | Component | Type | Description |
@@ -139,12 +166,15 @@ When a bid is placed, the update is instantly pushed to all connected clients wa
 
 ## 🔧 Technical Stack
 
-- **Backend**: Java 17 (Spring Boot 3.x)
+- **Backend**: Java 17 (Spring Boot 3.x / 4.x)
 - **Build Tool**: Gradle (Groovy DSL for services, Kotlin DSL for gateway)
 - **API Gateway**: Spring Cloud Gateway (reactive, Netty)
+- **Service Discovery**: Spring Cloud Netflix Eureka
+- **Inter-Service Communication**: Spring Cloud OpenFeign (declarative REST clients)
 - **Messaging**: Apache Kafka (`spring-kafka`)
 - **Reliability Pattern**: Transactional Outbox Pattern
 - **Real-Time**: WebSocket (STOMP) + Redis Pub/Sub (`spring-boot-starter-websocket`, `spring-boot-starter-data-redis`)
+- **Email Notifications**: Spring Boot Mail (`spring-boot-starter-mail`, Gmail SMTP)
 - **Distributed Scheduling**: ShedLock (`shedlock-spring`, `shedlock-provider-jdbc-template`)
 - **Caching & Rate Limiting**: Redis (`spring-boot-starter-data-redis-reactive` in gateway)
 - **Database**: MySQL (JPA/Hibernate)
@@ -191,7 +221,7 @@ Ensure you have Docker and Docker Compose installed on your system.
    ```
 
 2. **Accessing the Services**:
-   The API Gateway runs on port `8080` as the primary entry point. All clients interact with the Gateway, which routes internally to `authService` (port configurable), `productService`, and `userService`.
+   The API Gateway runs on port `8080` as the primary entry point. All clients interact with the Gateway, which routes internally to `authService` (port configurable), `productService`, `userService`, and `notificationService` (port `9005`). The `notificationService` requires the `MAIL_USERNAME` and `MAIL_PASSWORD` environment variables to be set for SMTP authentication.
 
 3. **WebSocket Connection**:
    Connect via SockJS/STOMP to `ws://localhost:8080/ws-auction` and subscribe to `/topic/product/{productId}` to receive real-time bid updates.

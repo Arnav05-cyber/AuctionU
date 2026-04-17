@@ -6,10 +6,9 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.44/503fd0b002dbb237fa4656cf4b8021666a8aebac/lombok-1.18.44.jar" />
-          <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.mapstruct/mapstruct-processor/1.5.5.Final/897f6f115930b936287bef552bf5fe28cc64717d/mapstruct-processor-1.5.5.Final.jar" />
-          <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok-mapstruct-binding/0.2.0/2f1cf9ced7b720ba4996c942b816669e63f0fa4f/lombok-mapstruct-binding-0.2.0.jar" />
         </processorPath>
-        <module name="org.main" />
+        <module name="notificationService.main" />
+        <module name="notificationService.test" />
       </profile>
     </annotationProcessing>
   </component>
@@ -21,6 +20,9 @@
       <module name="gateway.app" options="-parameters" />
       <module name="gateway.app.main" options="-parameters" />
       <module name="gateway.app.test" options="-parameters" />
+      <module name="notificationService" options="-parameters" />
+      <module name="notificationService.main" options="-parameters" />
+      <module name="notificationService.test" options="-parameters" />
       <module name="org" options="-parameters" />
       <module name="org.main" options="-parameters" />
       <module name="org.test" options="-parameters" />
