@@ -13,7 +13,9 @@ import com.example.org.repos.OutboxRepository;
 import com.example.org.repos.ProductRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,27 +24,32 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-public class ProductServiceImpl implements ProductService{
+public class ProductServiceImpl implements ProductService {
 
-    private final ProductRepository  productRepository;
+    private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final OutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
-    private final ProductEvent event;
 
-    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper, OutboxRepository outboxRepository,  ObjectMapper objectMapper, ProductEvent event) {
+    private final SimpMessagingTemplate simpMessagingTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper, OutboxRepository outboxRepository,
+                              ObjectMapper objectMapper, SimpMessagingTemplate simpMessagingTemplate
+    , StringRedisTemplate stringRedisTemplate) {
         this.productRepository = productRepository;
         this.productMapper = productMapper;
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
-        this.event = event;
+        this.simpMessagingTemplate = simpMessagingTemplate;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override
     public ProductResponseDto createProduct(ProductRequestDto productRequestDto) {
-        Product product =  productMapper.toEntity(productRequestDto);
+        Product product = productMapper.toEntity(productRequestDto);
         product.setStatus(Status.ACTIVE);
-        Product savedProduct =  productRepository.save(product);
+        Product savedProduct = productRepository.save(product);
         return productMapper.toDto(savedProduct);
     }
 
@@ -85,12 +92,12 @@ public class ProductServiceImpl implements ProductService{
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        if(!product.getType().equals(SaleType.FIXED_PRICE)) {
+        if (!product.getType().equals(SaleType.FIXED_PRICE)) {
             throw new RuntimeException("Product is not available for direct purchase");
         }
 
-        if(product.getQuantity() < quantity) {
-        throw new RuntimeException("Product quantity less than quantity");
+        if (product.getQuantity() < quantity) {
+            throw new RuntimeException("Product quantity less than quantity");
         }
 
         product.setQuantity(product.getQuantity() - quantity);
@@ -110,6 +117,18 @@ public class ProductServiceImpl implements ProductService{
                 .sellerId(product.getSellerId())
                 .timeStamp(java.time.LocalDateTime.now())
                 .build();
+
+        try {
+            outboxRepository.save(OutboxEntity.builder()
+                    .aggregateId(productId.toString())
+                    .eventType(productEvent.getEventType()) // Use the event we just built
+                    .payload(objectMapper.writeValueAsString(productEvent)) // Use the event we just built
+                    .createdAt(LocalDateTime.now())
+                    .processed(false)
+                    .build());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error serializing event for outbox", e);
+        }
     }
 
     @Override
@@ -123,19 +142,19 @@ public class ProductServiceImpl implements ProductService{
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        if(!product.getType().equals(SaleType.AUCTION)) {
+        if (!product.getType().equals(SaleType.AUCTION)) {
             throw new RuntimeException("Product is not available for bidding");
         }
 
-        if(product.getAuctionEndTime().isBefore(java.time.LocalDateTime.now())) {
+        if (product.getAuctionEndTime().isBefore(java.time.LocalDateTime.now())) {
             throw new RuntimeException("Auction has already ended");
         }
 
-        if(amount .compareTo(product.getCurrentHighestBid()) <= 0) {
+        if (amount.compareTo(product.getCurrentHighestBid()) <= 0) {
             throw new RuntimeException("Bid amount must be higher than current highest bid");
         }
 
-        if(!product.getStatus().equals(Status.ACTIVE)) {
+        if (!product.getStatus().equals(Status.ACTIVE)) {
             throw new RuntimeException("Product is not active for bidding");
         }
 
@@ -144,17 +163,6 @@ public class ProductServiceImpl implements ProductService{
 
         productRepository.save(product);
 
-        try {
-            outboxRepository.save(OutboxEntity.builder()
-                    .aggregateId(productId.toString())
-                    .eventType(event.getEventType())
-                    .payload(objectMapper.writeValueAsString(event))
-                    .createdAt(LocalDateTime.now())
-                    .processed(false)
-                    .build());
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
 
         ProductEvent productEvent = ProductEvent.builder()
                 .eventType("BID_PLACED")
@@ -165,8 +173,22 @@ public class ProductServiceImpl implements ProductService{
                 .sellerId(product.getSellerId())
                 .timeStamp(java.time.LocalDateTime.now())
                 .build();
+
+
+        try {
+            outboxRepository.save(OutboxEntity.builder()
+                    .aggregateId(productId.toString())
+                    .eventType(productEvent.getEventType()) // Use the event we just built
+                    .payload(objectMapper.writeValueAsString(productEvent)) // Use the event we just built
+                    .createdAt(LocalDateTime.now())
+                    .processed(false)
+                    .build());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error serializing event for outbox", e);
         }
 
 
-
+        String redisMessage = productId + ":" + "New bid: " + amount;
+        stringRedisTemplate.convertAndSend("auction-updates", redisMessage);
+    }
 }

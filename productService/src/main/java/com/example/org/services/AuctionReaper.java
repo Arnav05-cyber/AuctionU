@@ -11,6 +11,7 @@ import com.example.org.repos.ProductRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,10 @@ public class AuctionReaper {
 
     @Scheduled(fixedDelay = 60000) // Run every 60 seconds
     @Transactional
+    @SchedulerLock(name = "auctionReaperLock", lockAtLeastFor = "30s", lockAtMostFor = "50s")
     public void reapExpiredSessions(){
+
+        log.info("Shedlock accquire lock");
 
         List<Product> expiredAuctions = productRepository.findByStatusAndTypeAndAuctionEndTimeBefore(
                 Status.ACTIVE,
