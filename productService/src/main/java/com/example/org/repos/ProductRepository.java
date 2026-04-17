@@ -6,6 +6,7 @@ import com.example.org.enums.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,4 +27,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByTypeAndStatus(SaleType type, Status status);
 
     List<Product> findByType(SaleType type);
+
+    List<Product> findByStatusAndTypeAndAuctionEndTimeBefore(
+            Status status,
+            SaleType type,
+            LocalDateTime time
+    );
 }

@@ -5,5 +5,5 @@ public enum Status {
     INACTIVE,
     PENDING,
     SOLD,
-    DELETED
+    DELETED,
 }

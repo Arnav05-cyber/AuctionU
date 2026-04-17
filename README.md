@@ -4,7 +4,7 @@ Welcome to **AuctionU**, a robust, event-driven microservices architecture desig
 
 ## 🚀 System Architecture
 
-The system is split into multiple microservices: `gateway`, `authService`, `userService`, and `productService`, decoupled asynchronously via **Apache Kafka** and backed by **Redis** and **MySQL/PostgreSQL**. 
+The system is split into multiple microservices: `gateway`, `authService`, `userService`, and `productService`, decoupled asynchronously via **Apache Kafka** using the **Transactional Outbox Pattern**, and backed by **Redis** and **MySQL/PostgreSQL**.
 
 ```mermaid
 sequenceDiagram
@@ -14,7 +14,7 @@ sequenceDiagram
     participant Kafka
     participant UserService
     participant ProductController as ProductController
-    participant RedisCache
+    participant OutboxProcessor
     participant Database
 
     App->>Gateway: POST /auth/v1/signup 
@@ -32,18 +32,25 @@ sequenceDiagram
     App->>Gateway: POST /v1/product/list
     Gateway->>ProductController: Route to ProductService
     Note over ProductController: Transforms DTO to Entity using MapStruct (Sales/Auctions)
-    ProductController->>RedisCache: Create Listing Cache (For fast active browsing/bidding)
     ProductController->>Database: Save Product Listing
-    ProductController->>Kafka: Publish "Product Listed Event"
-    ProductController-->>Gateway: 200 OK (Product Listed)
-    Gateway-->>App: 200 OK (Product Listed)
 
     App->>Gateway: POST /v1/product/purchase (or /bid)
     Gateway->>ProductController: Route Request
-    ProductController->>RedisCache: Validate & Update State (Atomic)
-    ProductController->>Kafka: Publish "Transaction Event"
-    ProductController-->>Gateway: 200 OK (Success)
-    Gateway-->>App: 200 OK (Success)
+    ProductController->>Database: Update Product State (Atomic Tx)
+    ProductController->>Database: Save Event to Outbox Table
+
+    loop Every 5 seconds
+        OutboxProcessor->>Database: Poll unprocessed outbox entries
+        OutboxProcessor->>Kafka: Publish "product-events" topic
+        OutboxProcessor->>Database: Mark entry as processed
+    end
+
+    loop Every 60 seconds
+        Note over ProductController: AuctionReaper scheduled job
+        ProductController->>Database: Find expired ACTIVE auctions
+        ProductController->>Database: Mark SOLD (winner) or INACTIVE (no bids)
+        ProductController->>Database: Write AUCTION_CLOSED / AUCTION_EXPIRED to Outbox
+    end
 ```
 
 ## 🌟 Key Features
@@ -53,8 +60,8 @@ sequenceDiagram
 The system is designed to handle high-traffic bidding environments effortlessly:
 
 - **Stateless Authentication**: Uses **JWT (JSON Web Tokens)** allowing horizontal scaling of the `authService`. Access is strictly limited to university students (e.g., matching `@snu.edu.in` constraints).
-- **Asynchronous Processing**: **Apache Kafka** handles user profile creation and broadcast events for auctions and bids, so no service is blocked on heavy write operations.
-- **Blazing Fast Bid Processing**: **Redis** is natively used for fast-paced, real-time bid validation and caching live auction metrics, enabling sub-millisecond read/writes on high-demand items.
+- **Transactional Outbox Pattern**: Instead of publishing directly to Kafka (which risks message loss on failure), all domain events (`BID_PLACED`, `PURCHASE`, `AUCTION_CLOSED`, `AUCTION_EXPIRED`) are first written atomically to a dedicated **`outbox` database table** within the same transaction as the business operation. A separate `OutboxProcessor` then polls this table every 5 seconds and reliably forwards events to Kafka.
+- **Guaranteed Message Delivery**: By coupling the outbox write with the business transaction, the system ensures no event is ever lost — even if Kafka is temporarily unavailable.
 
 ### 2. Microservices Overview
 
@@ -74,21 +81,37 @@ The system is designed to handle high-traffic bidding environments effortlessly:
 - **Integration**: Designed to sync profile mappings tightly with other internal services.
 
 #### D. Product/Auction Service (`productService` / `ProductController`)
-**Responsibility**: Core listings logistics, managing direct sales and auctions, and matchmaking buyers & sellers.
+**Responsibility**: Core listings logistics, managing direct sales and auctions, event publishing, and automated auction lifecycle management.
 - **Robust Validation**: Enforces strict backend validation annotations for robust DTO bindings (e.g. tracking constraints for pricing, auction end times, and seller relationships).
 - **History Retention**: Enforces soft deletion by transitioning entity statuses to `DELETED` instead of destroying active database rows, thus retaining product/auction history.
 - **Entity Pre-Processing**: Integrates into JPA `@PrePersist` lifecycles to bootstrap entity properties securely upon creation.
-- **Real-Time Transactions**: Uses Redis to lock, update, and fetch the highest bids or inventory atomically, preventing race conditions during intense last-second bidding wars or flash sales.
-- **Database**: Stores completed sales, auctions, and product details robustly in a relational database.
+- **Transactional Outbox (Bids & Purchases)**: On every `placeBid` or `purchaseProduct` operation, a `ProductEvent` is serialized and saved to the `outbox` table atomically, guaranteeing the event reaches Kafka exactly once via the `OutboxProcessor`.
+- **AuctionReaper (Scheduled Job)**: A `@Scheduled` service (`AuctionReaper`) runs every **60 seconds** to find all `ACTIVE` auctions past their `auctionEndTime`. It transitions them to `SOLD` (if a highest bidder exists) or `INACTIVE` (if no bids were placed), and writes a corresponding `AUCTION_CLOSED` or `AUCTION_EXPIRED` event to the outbox for downstream notification.
+- **Kafka Topic**: All product domain events are published to the `product-events` Kafka topic (3 partitions, 1 replica), configured via `KafkaConfig`.
+- **Database**: Stores completed sales, auctions, product details, and outbox entries robustly in a relational database.
+
+## 📦 New Components (productService)
+
+| Component | Type | Description |
+|---|---|---|
+| `KafkaConfig` | `@Configuration` | Declares the `product-events` Kafka topic (3 partitions). |
+| `ProductEvent` | DTO | Payload for all product domain events (`BID_PLACED`, `PURCHASE`, `AUCTION_CLOSED`, `AUCTION_EXPIRED`). Fields: `eventType`, `productId`, `title`, `amount`, `userId`, `sellerId`, `timeStamp`. |
+| `OutboxEntity` | `@Entity` | JPA entity mapped to the `outbox` table. Stores serialized `ProductEvent` JSON, `aggregateId` (product ID), `eventType`, `createdAt`, and `processed` flag. |
+| `OutboxRepository` | `@Repository` | Spring Data repository for `OutboxEntity`. Exposes `findByProcessedFalse()` for the polling processor. |
+| `OutboxProcessor` | `@Service` | Scheduled every **5 seconds**. Polls unprocessed outbox rows, publishes them to the `product-events` Kafka topic, and marks them as processed. |
+| `AuctionReaper` | `@Service` | Scheduled every **60 seconds**. Detects expired auctions, settles their status, and writes close/expire events to the outbox. |
 
 ## 🔧 Technical Stack
 
 - **Backend Languages**: Java (Spring Boot) / Kotlin
 - **Build Tool**: Gradle
-- **Messaging Pipeline**: Apache Kafka
+- **Messaging Pipeline**: Apache Kafka (`spring-kafka`)
+- **Reliability Pattern**: Transactional Outbox Pattern
 - **Caching & Synchronization**: Redis
 - **Database Engine**: Relational (MySQL / PostgreSQL)
 - **Security & Routing**: Spring Security, JWT, Spring Cloud Gateway
+- **Serialization**: Jackson (`jackson-databind`), MapStruct
+- **Scheduling**: Spring `@EnableScheduling` / `@Scheduled`
 - **Deployment**: Docker, Docker Compose
 
 ## 🏃‍♂️ Local Development Setup
@@ -96,12 +119,12 @@ The system is designed to handle high-traffic bidding environments effortlessly:
 Ensure you have Docker and Docker Compose installed on your system.
 
 1. **Start Backend Infrastructure**:
-   Spin up all dependent services (Database, Redis, Kafka server, Zookeeper) along with the microservices.
+   Spin up all dependent services (Database, Kafka, Zookeeper) along with the microservices.
    ```bash
    docker-compose up -d --build
    ```
 2. **Accessing the Services**:
-   The API Gateway runs as the primary entry point. Clients interact directly with the Gateway, which then automatically maps and routes to internal domains (`authService`, `productService`, etc.). Internal inter-service REST routes can be further protected sequentially.
+   The API Gateway runs as the primary entry point. Clients interact directly with the Gateway, which then automatically maps and routes to internal domains (`authService`, `productService`, etc.).
 
 3. **Stopping the Environment**:
    ```bash

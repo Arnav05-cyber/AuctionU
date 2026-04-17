@@ -1,17 +1,24 @@
 package com.example.org.services;
 
 
+import com.example.org.dtos.ProductEvent;
 import com.example.org.dtos.ProductRequestDto;
 import com.example.org.dtos.ProductResponseDto;
+import com.example.org.entities.OutboxEntity;
 import com.example.org.entities.Product;
 import com.example.org.enums.SaleType;
 import com.example.org.enums.Status;
 import com.example.org.mappers.ProductMapper;
+import com.example.org.repos.OutboxRepository;
 import com.example.org.repos.ProductRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -19,10 +26,16 @@ public class ProductServiceImpl implements ProductService{
 
     private final ProductRepository  productRepository;
     private final ProductMapper productMapper;
+    private final OutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
+    private final ProductEvent event;
 
-    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper) {
+    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper, OutboxRepository outboxRepository,  ObjectMapper objectMapper, ProductEvent event) {
         this.productRepository = productRepository;
         this.productMapper = productMapper;
+        this.outboxRepository = outboxRepository;
+        this.objectMapper = objectMapper;
+        this.event = event;
     }
 
     @Override
@@ -87,6 +100,16 @@ public class ProductServiceImpl implements ProductService{
         }
 
         productRepository.save(product);
+
+        ProductEvent productEvent = ProductEvent.builder()
+                .eventType("PURCHASE")
+                .productId(product.getId())
+                .title(product.getTitle())
+                .amount(product.getBuyItNowPrice().multiply(BigDecimal.valueOf(quantity)))
+                .userId(buyerId)
+                .sellerId(product.getSellerId())
+                .timeStamp(java.time.LocalDateTime.now())
+                .build();
     }
 
     @Override
@@ -120,5 +143,30 @@ public class ProductServiceImpl implements ProductService{
         product.setHighestBidderId(bidderId);
 
         productRepository.save(product);
-    }
+
+        try {
+            outboxRepository.save(OutboxEntity.builder()
+                    .aggregateId(productId.toString())
+                    .eventType(event.getEventType())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .createdAt(LocalDateTime.now())
+                    .processed(false)
+                    .build());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+        ProductEvent productEvent = ProductEvent.builder()
+                .eventType("BID_PLACED")
+                .productId(product.getId())
+                .title(product.getTitle())
+                .amount(amount)
+                .userId(bidderId)
+                .sellerId(product.getSellerId())
+                .timeStamp(java.time.LocalDateTime.now())
+                .build();
+        }
+
+
+
 }
