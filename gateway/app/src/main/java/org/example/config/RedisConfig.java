@@ -10,9 +10,9 @@ import reactor.core.publisher.Mono;
 public class RedisConfig {
 
     @Bean
-    public KeyResolver  userKeyResolver() {
-        return exchange -> Mono.justOrEmpty(exchange.getRequest().getHeaders().getFirst("X-User-Id"))
+    public KeyResolver ipKeyResolver() {
+        return exchange -> Mono.justOrEmpty(exchange.getRequest().getRemoteAddress())
+                .map(java.net.InetSocketAddress::getHostString)
                 .defaultIfEmpty("anonymous");
     }
-
 }

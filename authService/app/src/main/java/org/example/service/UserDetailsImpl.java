@@ -29,7 +29,7 @@ public class UserDetailsImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepo.findByUserName(username)
+        return userRepo.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
@@ -41,13 +41,13 @@ public class UserDetailsImpl implements UserDetailsService {
         }
 
         // 2. Duplicate Check
-        if (userRepo.findByUserName(registrationRequest.getUserName()).isPresent()) {
+        if (userRepo.findByUsername(registrationRequest.getUsername()).isPresent()) {
             return false;
         }
 
         // 3. Entity Preparation
         UserInfo userEntity = new UserInfo();
-        userEntity.setUsername(registrationRequest.getUserName());
+        userEntity.setUsername(registrationRequest.getUsername());
         userEntity.setEmail(registrationRequest.getEmail());
         userEntity.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
 
@@ -57,7 +57,7 @@ public class UserDetailsImpl implements UserDetailsService {
         // 5. Convert to UserInfoDto for Kafka (NO PASSWORD)
         UserInfoDto kafkaEventData = UserInfoDto.builder()
                 .userId(savedUser.getUserId())
-                .userName(savedUser.getUsername())
+                .username(savedUser.getUsername())
                 .email(savedUser.getEmail())
                 .firstName(registrationRequest.getFirstName())
                 .lastName(registrationRequest.getLastName())

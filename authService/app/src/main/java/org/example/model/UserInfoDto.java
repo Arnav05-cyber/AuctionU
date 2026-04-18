@@ -15,7 +15,7 @@ import org.example.entities.UserInfo;
 public class UserInfoDto{
 
     private String userId;
-    private String userName;
+    private String username;
     private String lastName;
     private String firstName;
     private String email;

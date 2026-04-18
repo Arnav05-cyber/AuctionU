@@ -5,6 +5,9 @@ CREATE DATABASE IF NOT EXISTS notificationservice;
 
 CREATE USER IF NOT EXISTS 'authuser'@'%' IDENTIFIED BY 'authpassword';
 GRANT ALL PRIVILEGES ON authservice.* TO 'authuser'@'%';
+GRANT ALL PRIVILEGES ON userservice.* TO 'authuser'@'%';
+GRANT ALL PRIVILEGES ON productservice.* TO 'authuser'@'%';
+GRANT ALL PRIVILEGES ON notificationservice.* TO 'authuser'@'%';
 
 GRANT ALL PRIVILEGES ON userservice.* TO 'root'@'%';
 GRANT ALL PRIVILEGES ON productservice.* TO 'root'@'%';

@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 public class JwtService {
 
     // In a real project, move this to application.yml!
-    public static final String SECRET_KEY = "your-very-secure-and-very-long-base64-encoded-secret-key-here";
+    public static final String SECRET_KEY = "dGhpc0lzQVZlcnlTZWN1cmVBbmRMb25nU2VjcmV0S2V5Rm9ySldUMTIzNDU2";
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);

@@ -18,7 +18,7 @@ public class CustomUserDetails extends UserInfo implements UserDetails {
 
     public CustomUserDetails(UserInfo userInfo) {
         setUserId(userInfo.getUserId()); // Set the userId in the parent class
-        this.username = userInfo.getUserName();
+        this.username = userInfo.getUsername();
         this.password = userInfo.getPassword();
         List<GrantedAuthority> auths = new ArrayList<>();
 

@@ -23,6 +23,7 @@ extra["springCloudVersion"] = "2023.0.0"
 dependencies {
     // 1. Reactive Gateway (Netty)
     implementation("org.springframework.cloud:spring-cloud-starter-gateway")
+    implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
 
     // 2. Redis for Rate Limiting
     implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")

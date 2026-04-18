@@ -24,10 +24,10 @@ public class RefreshTokenService {
     @Transactional
     public RefreshToken createRefreshToken(String userName) {
         // 1. Find User
-        UserInfo user = userRepo.findByUserName(userName)
+        UserInfo user = userRepo.findByUsername(userName)
             .orElseThrow(() -> new RuntimeException("User not found for refresh token creation: " + userName));
             
-        System.out.println("RefreshTokenService: Creating token for user: " + user.getUserName() + " (ID: " + user.getUserId() + ")");
+        System.out.println("RefreshTokenService: Creating token for user: " + user.getUsername() + " (ID: " + user.getUserId() + ")");
 
         // 2. FORCE DELETE existing token (handle duplicate constraint)
         try {

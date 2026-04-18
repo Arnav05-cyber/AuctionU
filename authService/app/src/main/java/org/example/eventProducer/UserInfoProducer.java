@@ -20,8 +20,8 @@ public class UserInfoProducer {
 
     public void sendEvent(UserInfoDto userInfoDto) {
         try {
-            kafkaTemplate.send(topicName, userInfoDto.getUserName(), userInfoDto);
-            System.out.println("Sent user event to Kafka: " + userInfoDto.getUserName());
+            kafkaTemplate.send(topicName, userInfoDto.getUsername(), userInfoDto);
+            System.out.println("Sent user event to Kafka: " + userInfoDto.getUsername());
         } catch (Exception e) {
             System.err.println("Failed to send user event to Kafka: " + e.getMessage());
             throw new RuntimeException("Kafka send failed", e);

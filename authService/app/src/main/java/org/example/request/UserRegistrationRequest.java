@@ -1,5 +1,6 @@
 package org.example.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 @Data
@@ -7,7 +8,8 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 public class UserRegistrationRequest {
-    private String userName;
+    @JsonProperty("userName")
+    private String username;
     private String email;
     private String password; // This exists ONLY here
     private String firstName;

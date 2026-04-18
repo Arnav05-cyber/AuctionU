@@ -39,7 +39,7 @@ public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    @PostMapping("/auth/v1/signup")
+    @PostMapping("/signup")
     public ResponseEntity signup(@RequestBody UserRegistrationRequest userRegistrationRequest){
         try {
             Boolean isSignedUp = userDetailsImpl.signUpUser(userRegistrationRequest);
@@ -47,10 +47,10 @@ public class AuthController {
                 return ResponseEntity.status(400).body("User signup failed. User may already exist or invalid data provided.");
             }
 
-            UserInfo userInfo = userRepo.findByUserName(userRegistrationRequest.getUserName())
+            UserInfo userInfo = userRepo.findByUsername(userRegistrationRequest.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found after save"));
 
-            RefreshToken refreshToken = refreshTokenService.createRefreshToken(userRegistrationRequest.getUserName());
+            RefreshToken refreshToken = refreshTokenService.createRefreshToken(userRegistrationRequest.getUsername());
             String jwtToken = jwtService.generateToken(userInfo);
             return ResponseEntity.ok(JwtResponseDTO.builder()
                     .accessToken(jwtToken)
@@ -62,13 +62,13 @@ public class AuthController {
     }
 
     // Add this new logout endpoint
-    @PostMapping("/auth/v1/logout")
+    @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader) {
         try {
             String token = authHeader.substring(7); // Remove "Bearer "
             String username = jwtService.extractUsername(token);
 
-            return userRepo.findByUserName(username)
+            return userRepo.findByUsername(username)
                     .map(user -> {
                         refreshTokenService.deleteByUser(user);
                         return ResponseEntity.ok("Logged out successfully");
@@ -121,5 +121,24 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.status(401).body("Authentication failed: " + e.getMessage());
         }
+    }
+
+    @PostMapping("/refreshToken")
+    public JwtResponseDTO refreshToken(
+            @RequestBody org.example.request.RefreshTokenRequestDTO refreshTokenRequestDTO) {
+
+        return refreshTokenService.findByToken(refreshTokenRequestDTO.getRefreshToken())
+                .map(refreshTokenService::verifyExpiration)
+                .map(org.example.entities.RefreshToken::getUserInfo)
+                .map(userInfo -> {
+                    String accessToken = jwtService.generateToken(userInfo);
+                    return JwtResponseDTO.builder()
+                            .accessToken(accessToken)
+                            .refreshToken(refreshTokenRequestDTO.getRefreshToken())
+                            .build();
+                })
+                .orElseThrow(() ->
+                        new RuntimeException("Refresh token is not in database!")
+                );
     }
 }

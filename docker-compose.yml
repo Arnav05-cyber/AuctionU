@@ -72,6 +72,8 @@ services:
         condition: service_started
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/authservice
+      - SPRING_DATASOURCE_USERNAME=authuser
+      - SPRING_DATASOURCE_PASSWORD=authpassword
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
 
