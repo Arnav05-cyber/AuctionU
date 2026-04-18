@@ -123,9 +123,9 @@ When a bid is placed, the update is instantly pushed to all connected clients wa
 **Responsibility**: Consuming product domain events from Kafka and sending transactional email notifications to users.
 - **Kafka Consumer**: `NotificationConsumer` listens to the `product-events` topic (consumer group: `notification-group`). On receiving a `ProductEvent`, it resolves the associated user's contact information and dispatches a contextual email.
 - **Feign Client (Eureka-Discovered)**: Uses **Spring Cloud OpenFeign** with a `@FeignClient(name = "USER-SERVICE")` to call the `userService` (`GET /api/v1/users/{id}`). Service discovery is handled by **Eureka**, so no hardcoded URLs are required — the client automatically resolves the `USER-SERVICE` instance.
-- **Email Dispatch**: Uses **Spring Boot Mail** (`JavaMailSender`) configured with Gmail SMTP (`smtp.gmail.com:587`, STARTTLS). Sends `SimpleMailMessage` notifications with contextual subjects ("Bid Confirmed", "Order Confirmation", "Winner!") and personalized bodies.
-- **Event Handling**: Supports `BID_PLACED`, `PURCHASE`, and `AUCTION_CLOSED` event types, generating event-specific email subjects and bodies for each.
-- **Fault Tolerance**: Wraps the entire consume→resolve→send flow in a try/catch, logging failures without crashing the consumer, ensuring Kafka offset progress continues.
+- **Email Dispatch**: Uses **Spring Boot Mail** (`JavaMailSender`) configured with Gmail SMTP (`smtp.gmail.com:587`, STARTTLS) along with **Thymeleaf** (`TemplateEngine`) for rich HTML emails. It constructs `MimeMessage` notifications with dynamic template variables (e.g., user name, product title, bid amount).
+- **Event Handling**: Retrieves context from domain events and injects them seamlessly into the `bid-notification` HTML template.
+- **Fault Tolerance & Retries**: Leverages Spring Kafka's `@RetryableTopic` to automatically retry message consumption on failures (e.g., mail server timeouts) using exponential backoff. Permanently failing messages (e.g. after max attempts) are routed to a Dead-Letter Topic (DLT) managed by an `@DltHandler`.
 
 ## 📦 Components Reference
 
@@ -150,7 +150,7 @@ When a bid is placed, the update is instantly pushed to all connected clients wa
 | Component | Type | Description |
 |---|---|---|
 | `NotificationServiceApplication` | `@SpringBootApplication` | Entry point. Annotated with `@EnableFeignClients` to activate Feign client scanning. |
-| `NotificationConsumer` | `@Service` | Kafka listener on the `product-events` topic (group: `notification-group`). Resolves user info via `UserClient`, constructs event-specific email content, and dispatches via `JavaMailSender`. |
+| `NotificationConsumer` | `@Service` | Kafka listener on the `product-events` topic. Resolves user info via `UserClient`, models HTML email content using Thymeleaf, and dispatches via `JavaMailSender`. Uses `@RetryableTopic` for automated retries with backoff, and tracks ultimate failures inside an `@DltHandler`. |
 | `UserClient` | `@FeignClient` | Declarative REST client targeting `USER-SERVICE` (Eureka-discovered). Calls `GET /api/v1/users/{id}` to fetch user profile (name, email). |
 | `ProductEvent` | DTO | Mirrors the product service's event payload. Fields: `eventType`, `productId`, `title`, `amount`, `userId`, `sellerId`, `timeStamp`. |
 | `UserResponseDto` | DTO | Response model from `userService`. Fields: `id`, `name`, `email`. |
@@ -171,10 +171,10 @@ When a bid is placed, the update is instantly pushed to all connected clients wa
 - **API Gateway**: Spring Cloud Gateway (reactive, Netty)
 - **Service Discovery**: Spring Cloud Netflix Eureka
 - **Inter-Service Communication**: Spring Cloud OpenFeign (declarative REST clients)
-- **Messaging**: Apache Kafka (`spring-kafka`)
+- **Messaging**: Apache Kafka (`spring-kafka`, `@RetryableTopic` backoff features)
 - **Reliability Pattern**: Transactional Outbox Pattern
 - **Real-Time**: WebSocket (STOMP) + Redis Pub/Sub (`spring-boot-starter-websocket`, `spring-boot-starter-data-redis`)
-- **Email Notifications**: Spring Boot Mail (`spring-boot-starter-mail`, Gmail SMTP)
+- **Email Notifications**: Spring Boot Mail & Thymeleaf templates (`spring-boot-starter-mail`, `spring-boot-starter-thymeleaf`, Gmail SMTP)
 - **Distributed Scheduling**: ShedLock (`shedlock-spring`, `shedlock-provider-jdbc-template`)
 - **Caching & Rate Limiting**: Redis (`spring-boot-starter-data-redis-reactive` in gateway)
 - **Database**: MySQL (JPA/Hibernate)

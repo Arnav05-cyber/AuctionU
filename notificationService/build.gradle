@@ -23,19 +23,27 @@ ext {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-kafka'
-    implementation 'org.springframework.boot:spring-boot-starter-mail'
-    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    // Web & Cloud
+    implementation 'org.springframework.boot:spring-boot-starter-web' // Changed from webmvc to starter-web
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+    // Kafka & Retry
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework:spring-aspects'
+
+    // Emails & Templates
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf' // Added for Pretty HTML
+
+    // Utilities
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-    testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-mail-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-    testCompileOnly 'org.projectlombok:lombok'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
 }
 
 dependencyManagement {
