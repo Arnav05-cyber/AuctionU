@@ -18,7 +18,7 @@ public class RouteValidator {
     );
 
     public Predicate<ServerHttpRequest> isSecure =
-            request -> openApiEndpoints.stream().noneMatch(uri -> request.getURI().getPath().contains(uri));
+            request -> !request.getMethod().name().equals("OPTIONS") && openApiEndpoints.stream().noneMatch(uri -> request.getURI().getPath().contains(uri));
 
     
 

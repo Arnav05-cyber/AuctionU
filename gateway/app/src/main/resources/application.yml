@@ -31,12 +31,16 @@ spring:
           uri: lb://PRODUCT-SERVICE
           predicates:
             - Path=/ws-auction/**
+          filters:
+            - AuthenticationFilter
 
         # 3. Route for PRODUCT API (Standard REST)
         - id: product-service
           uri: lb://PRODUCT-SERVICE
           predicates:
             - Path=/api/v1/products/**
+          filters:
+            - AuthenticationFilter
 
         # 4. Route for USER SERVICE
         - id: user-service

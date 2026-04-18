@@ -92,6 +92,10 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
+        if (product.getSellerId().equals(buyerId)) {
+            throw new RuntimeException("Seller cannot purchase their own product");
+        }
+
         if (!product.getType().equals(SaleType.FIXED_PRICE)) {
             throw new RuntimeException("Product is not available for direct purchase");
         }
@@ -141,6 +145,10 @@ public class ProductServiceImpl implements ProductService {
     public void placeBid(Long productId, BigDecimal amount, String bidderId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        if (product.getSellerId().equals(bidderId)) {
+            throw new RuntimeException("Seller cannot bid on their own product");
+        }
 
         if (!product.getType().equals(SaleType.AUCTION)) {
             throw new RuntimeException("Product is not available for bidding");

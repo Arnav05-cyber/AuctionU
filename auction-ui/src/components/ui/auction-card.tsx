@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useCountdown } from '@/hooks/use-countdown'
 import { authFetch } from '@/lib/api'
+import { useAuth } from '@/context/auth-context'
 import { Timer, Gavel, TrendingUp, Zap, ShoppingCart, Package } from 'lucide-react'
 import type { Product } from '@/types/auction'
 
@@ -16,6 +17,7 @@ interface AuctionCardProps {
 }
 
 export const AuctionCard = memo(function AuctionCard({ product, liveBid }: AuctionCardProps) {
+  const { user } = useAuth()
   const { title, currentHighestBid, auctionEndTime, status, saleType, buyItNowPrice, quantity } = product
   const isAuction = saleType === 'AUCTION'
   const displayBid = liveBid ?? (currentHighestBid ?? 0)
@@ -163,14 +165,14 @@ export const AuctionCard = memo(function AuctionCard({ product, liveBid }: Aucti
         {/* Action button */}
         <div className="px-5 pt-2 pb-5">
           {isAuction ? (
-            <Button onClick={handleQuickBid} disabled={bidding || !isLive} className="w-full" size="lg">
-              {bidding ? 'Placing...' : !isLive ? 'Auction Ended' : (
+            <Button onClick={handleQuickBid} disabled={bidding || !isLive || (user?.userId === product.sellerId)} className="w-full" size="lg">
+              {user?.userId === product.sellerId ? 'Your Auction' : bidding ? 'Placing...' : !isLive ? 'Auction Ended' : (
                 <><Zap className="w-4 h-4" />Quick Bid +$10</>
               )}
             </Button>
           ) : (
-            <Button onClick={handleQuickPurchase} disabled={bidding || !isLive || (quantity ?? 0) === 0} className="w-full" size="lg">
-              {bidding ? 'Purchasing...' : (quantity ?? 0) === 0 ? 'Sold Out' : (
+            <Button onClick={handleQuickPurchase} disabled={bidding || !isLive || (quantity ?? 0) === 0 || (user?.userId === product.sellerId)} className="w-full" size="lg">
+              {user?.userId === product.sellerId ? 'Your Item' : bidding ? 'Purchasing...' : (quantity ?? 0) === 0 ? 'Sold Out' : (
                 <><ShoppingCart className="w-4 h-4" />Buy Now</>
               )}
             </Button>

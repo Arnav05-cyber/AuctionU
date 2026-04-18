@@ -216,8 +216,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                           className="w-full h-11 px-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition tabular-nums" />
                         <p className="text-xs text-slate-600 mt-1">Min bid: ${(currentBid + 1).toLocaleString('en-US')}</p>
                       </div>
-                      <Button onClick={handleBid} disabled={actionLoading || !isLive || parseFloat(bidAmount) <= currentBid} className="w-full" size="lg">
-                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : !isLive ? 'Auction Ended' : <><Gavel className="w-4 h-4" />Place Bid</>}
+                      <Button onClick={handleBid} disabled={actionLoading || !isLive || parseFloat(bidAmount) <= currentBid || user?.userId === product.sellerId} className="w-full" size="lg">
+                        {user?.userId === product.sellerId ? 'Your Auction' : actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : !isLive ? 'Auction Ended' : <><Gavel className="w-4 h-4" />Place Bid</>}
                       </Button>
                     </div>
                   ) : (
@@ -230,8 +230,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                           className="w-full h-11 px-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition tabular-nums" />
                       </div>
                       <p className="text-sm text-slate-300">Total: <span className="text-emerald-400 font-bold">${((product.buyItNowPrice ?? 0) * purchaseQty).toLocaleString('en-US')}</span></p>
-                      <Button onClick={handlePurchase} disabled={actionLoading || !isLive || (product.quantity ?? 0) === 0} className="w-full" size="lg">
-                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (product.quantity ?? 0) === 0 ? 'Sold Out' : <><ShoppingCart className="w-4 h-4" />Purchase</>}
+                      <Button onClick={handlePurchase} disabled={actionLoading || !isLive || (product.quantity ?? 0) === 0 || user?.userId === product.sellerId} className="w-full" size="lg">
+                        {user?.userId === product.sellerId ? 'Your Item' : actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (product.quantity ?? 0) === 0 ? 'Sold Out' : <><ShoppingCart className="w-4 h-4" />Purchase</>}
                       </Button>
                     </div>
                   )}

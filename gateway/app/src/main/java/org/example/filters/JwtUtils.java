@@ -13,18 +13,18 @@ import java.util.Base64;
 @Component
 public class JwtUtils {
 
-    public static final String MY_SECRET_KEY = "your-very-secure-and-very-long-base64-encoded-secret-key-here";
+    public static final String MY_SECRET_KEY = "dGhpc0lzQVZlcnlTZWN1cmVBbmRMb25nU2VjcmV0S2V5Rm9ySldUMTIzNDU2";
 
     public void validateToken(String token) {
         Jwts.parserBuilder()
-                .setSigningKey(MY_SECRET_KEY.getBytes())
+                .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token);
     }
 
     public String extractUserId(String token){
         Claims claims = Jwts.parserBuilder()
-                .setSigningKey(MY_SECRET_KEY.getBytes())
+                .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

@@ -50,8 +50,8 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
 
                     String userId = jwtUtils.extractUserId(header);
 
-                    exchange.getRequest().mutate()
-                            .header("X-User-Id", userId)
+                    exchange = exchange.mutate()
+                            .request(exchange.getRequest().mutate().header("X-User-Id", userId).build())
                             .build();
                 } catch (Exception e) {
                     return onError(exchange, "Invalid authorization header", HttpStatus.UNAUTHORIZED);
