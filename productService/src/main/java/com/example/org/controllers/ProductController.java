@@ -8,7 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -27,10 +29,29 @@ public class ProductController {
         return ResponseEntity.ok(productService.getAuctionItems());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductResponseDto> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
+    }
+
     @PostMapping("/create")
     public ResponseEntity<ProductResponseDto> createProduct(@RequestBody ProductRequestDto requestDto, @RequestHeader("X-User-Id") String sellerId) {
         requestDto.setSellerId(sellerId);
         return ResponseEntity.ok(productService.createProduct(requestDto));
+    }
+
+    @PostMapping("/{id}/bid")
+    public ResponseEntity<?> placeBid(@PathVariable Long id, @RequestBody Map<String, Object> body, @RequestHeader("X-User-Id") String bidderId) {
+        BigDecimal amount = new BigDecimal(body.get("amount").toString());
+        productService.placeBid(id, amount, bidderId);
+        return ResponseEntity.ok(Map.of("message", "Bid placed successfully"));
+    }
+
+    @PostMapping("/{id}/purchase")
+    public ResponseEntity<?> purchaseProduct(@PathVariable Long id, @RequestBody Map<String, Object> body, @RequestHeader("X-User-Id") String buyerId) {
+        Integer quantity = Integer.parseInt(body.get("quantity").toString());
+        productService.purchaseProduct(id, quantity, buyerId);
+        return ResponseEntity.ok(Map.of("message", "Purchase successful"));
     }
 
 }

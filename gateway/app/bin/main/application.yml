@@ -1,32 +1,56 @@
 server:
-  port: 8080 # The "Front Door"
+  port: 8080
 
 spring:
   application:
     name: gateway-service
   cloud:
     gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
       routes:
-        # Route for AUTH SERVICE
+        # 1. Route for AUTH SERVICE
         - id: auth-service
-          uri: http://localhost:9001
+          uri: lb://AUTH-SERVICE # Use 'lb://' for Load Balancing via Eureka
           predicates:
             - Path=/auth/v1/**
 
-        # Route for USER SERVICE
+        # 2. Route for PRODUCT WEBSOCKETS
+        - id: product-websocket-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/ws-auction/**
+
+        # 3. Route for PRODUCT API (Standard REST)
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**
+
+        # 4. Route for USER SERVICE
         - id: user-service
-          uri: http://localhost:9002
+          uri: lb://USER-SERVICE
           predicates:
             - Path=/api/v1/users/**
           filters:
             - AuthenticationFilter
             - name: RequestRateLimiter
               args:
-              key-resolver: "#{@ipKeyResolver}"
-              redis-rate-limiter.replenishRate: 5
-              redis-rate-limiter.burstCapacity: 10
+                key-resolver: "#{@ipKeyResolver}"
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
 
-  # Redis Configuration (For the Rate Limiter we'll add next)
   data:
     redis:
       host: localhost

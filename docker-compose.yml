@@ -1,0 +1,161 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Infrastructure
+  # ==========================================
+  mysql:
+    image: mysql:8.0
+    container_name: auctionu-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: auctionu-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: auctionu-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  redis:
+    image: redis:7-alpine
+    container_name: auctionu-redis
+    ports:
+      - "6379:6379"
+
+  eureka:
+    image: steeltoeoss/eureka-server
+    container_name: auctionu-eureka
+    ports:
+      - "8761:8761"
+
+  # ==========================================
+  # Microservices
+  # ==========================================
+  auth-service:
+    build:
+      context: ./authService
+    container_name: auctionu-authservice
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/authservice
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+
+  user-service:
+    build:
+      context: ./userService
+    container_name: auctionu-userservice
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/userservice
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+
+  product-service:
+    build:
+      context: ./productService
+    container_name: auctionu-productservice
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/productservice
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_DATA_REDIS_HOST=redis
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+
+  notification-service:
+    build:
+      context: ./notificationService
+    container_name: auctionu-notificationservice
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+      - MAIL_USERNAME=test@example.com
+      - MAIL_PASSWORD=test
+
+  gateway:
+    build:
+      context: ./gateway
+    container_name: auctionu-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      eureka:
+        condition: service_started
+      redis:
+        condition: service_started
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+
+  # ==========================================
+  # Frontend
+  # ==========================================
+  auction-ui:
+    build:
+      context: ./auction-ui
+    container_name: auctionu-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - gateway
+    environment:
+      - NEXT_PUBLIC_GATEWAY_URL=http://localhost:8080
+      - NEXT_PUBLIC_GATEWAY_WS_URL=ws://localhost:8080/ws-auction
