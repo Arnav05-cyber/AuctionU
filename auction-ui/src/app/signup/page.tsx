@@ -64,10 +64,15 @@ export default function SignupPage() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    const normalizedOtp = otp.trim()
+    if (normalizedOtp.length !== 6) {
+      setError('Enter the 6-digit verification code from your email.')
+      return
+    }
     setLoading(true)
     try {
-      await verifySignup(form.email, otp)
-      await login({ userName: form.email, password: form.password })
+      await verifySignup(form.email, normalizedOtp)
+      await login({ userName: form.userName, password: form.password })
       router.push('/')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Invalid or expired verification code'

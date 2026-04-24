@@ -4,6 +4,7 @@
     import com.example.org.notificationservice.dtos.OtpEventDto;
     import com.example.org.notificationservice.dtos.ProductEvent;
     import com.example.org.notificationservice.dtos.UserResponseDto;
+    import com.fasterxml.jackson.databind.ObjectMapper;
     import jakarta.mail.internet.MimeMessage;
     import lombok.RequiredArgsConstructor;
     import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@
         private final UserClient userClient;
         private final JavaMailSender mailSender;
         private final TemplateEngine templateEngine; // Inject this for HTML
+        private final ObjectMapper objectMapper;
 
         @Value("${spring.mail.username}")
         private String senderEmail;
@@ -45,9 +47,10 @@
                 topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
                 include = {Exception.class}
         )
-        @KafkaListener(topics = "product-events", groupId = "notification-group")
-        public void consumeProductEvent(ProductEvent event) {
+        @KafkaListener(topics = "product-events", groupId = "${spring.kafka.consumer.group-id}")
+        public void consumeProductEvent(String payload) {
             // DON'T catch the exception here if you want Retries to work!
+            ProductEvent event = parsePayload(payload, ProductEvent.class);
             log.info("#### -> Consuming: {} for Product: {}", event.getEventType(), event.getTitle());
 
             UserResponseDto user = userClient.getUserById(event.getUserId());
@@ -56,8 +59,9 @@
             sendHtmlEmail(event, user);
         }
 
-        @KafkaListener(topics = "otp-events", groupId = "notification-group")
-        public void consumeOtpEvent(OtpEventDto event) {
+        @KafkaListener(topics = "otp-events", groupId = "${spring.kafka.consumer.group-id}")
+        public void consumeOtpEvent(String payload) {
+            OtpEventDto event = parsePayload(payload, OtpEventDto.class);
             log.info("#### -> Consumed OTP Event for email: {}", event.getEmail());
             log.info("#### -> LOCAL DEV ONLY - OTP IS: {}", event.getOtp());
 
@@ -111,8 +115,17 @@
             }
         }
 
+        private <T> T parsePayload(String payload, Class<T> clazz) {
+            try {
+                return objectMapper.readValue(payload, clazz);
+            } catch (Exception e) {
+                log.error("Failed to parse payload into {}: {}", clazz.getSimpleName(), e.getMessage());
+                throw new RuntimeException(e);
+            }
+        }
+
         @DltHandler
-        public void handleDlt(ProductEvent event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
-            log.error("DLT REACHED: Permanent failure for Product ID: {}", event.getProductId());
+        public void handleDlt(String payload, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+            log.error("DLT REACHED on topic {} with payload: {}", topic, payload);
         }
     }

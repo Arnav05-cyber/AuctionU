@@ -33,10 +33,15 @@ sequenceDiagram
         NotificationService->>MailServer: Send OTP Email
     end
 
-    UI->>Gateway: POST /auth/v1/verify
+    UI->>Gateway: POST /auth/v1/verify-signup
     Gateway->>AuthService: Route Request
     AuthService->>Redis: Validate OTP
     AuthService->>Kafka: Publish "userEvents" (User Created)
+    AuthService-->>Gateway: 200 OK (Account Created)
+    Gateway-->>UI: 200 OK (Account Created)
+
+    UI->>Gateway: POST /auth/v1/login
+    Gateway->>AuthService: Route Request
     AuthService-->>Gateway: 200 OK (JWT + Refresh Token)
     Gateway-->>UI: 200 OK (JWT + Refresh Token)
 
@@ -101,7 +106,7 @@ Instant visual updates to users using STOMP WebSocket communication dynamically 
 - **C. Auth Service (`authService`)**: Secure enrollment, `@snu.edu.in` enforcement logic with complex password constraints, and JWT issuer.
 - **D. User Service (`userService`)**: Independent persistence of user profiles communicating through shared secrets restricting any external endpoint hijacking.
 - **E. Product Service (`productService`)**: Core logistics engine governing the business rules behind `AUCTION` and `FIXED_PRICE` sales types.
-- **F. Notification Service (`notificationService`)**: Spring Boot Mail / Thymeleaf engine listening on consumer `product-events` gracefully notifying users about closed auctions and active bids resolving emails securely using Netflix Eureka and OpenFeign.
+- **F. Notification Service (`notificationService`)**: Spring Boot Mail / Thymeleaf engine listening on consumers (`otp-events`, `product-events`) and sending emails via SMTP using Eureka + OpenFeign. This service is intentionally stateless in the current implementation (no JPA entities/repositories), so the `notificationservice` MySQL schema exists but has no application tables.
 
 ## 🔧 Technical Stack
 
@@ -122,7 +127,7 @@ docker-compose up --build -d
 ```
 
 ### What happens?
-1. The `mysql:8.0` cluster boots up and automatically initializes the database schemas and required network tables (`shedlock`, `outbox`, DB constraints) via our attached `init.sql`.
+1. The `mysql:8.0` cluster boots up and initializes service schemas via `init.sql`; only services that persist domain state create tables (for example, product service tables such as `shedlock`), while `notificationService` currently keeps no DB tables by design.
 2. Infrastructure shards `zookeeper`, `kafka`, `eureka-server`, and `redis-alpine` boot alongside one another.
 3. Every individual Spring Boot service successfully compiles inside multi-stage `eclipse-temurin` pipelines and starts, connecting and automatically registering their domains natively to the `eureka` discovery pipeline.
 4. Finally, the **Next.js UI container** builds and spins up at port `3000`.
