@@ -27,6 +27,10 @@ export async function apiFetch<T>(
     return undefined as T
   }
 
+  if (contentType.includes("text/plain")) {
+    return res.text() as unknown as T
+  }
+
   return res.json()
 }
 

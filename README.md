@@ -23,7 +23,20 @@ sequenceDiagram
     UI->>Gateway: POST /auth/v1/signup 
     Gateway->>AuthService: Route Request
     Note right of AuthService: Validates @snu.edu.in domain
-    AuthService->>Kafka: Publish "User Created Event"
+    AuthService->>Redis: Store Temporary User & OTP
+    AuthService->>Kafka: Publish "otp-events"
+    AuthService-->>Gateway: 200 OK (OTP Sent)
+    Gateway-->>UI: 200 OK (OTP Sent)
+
+    par Async OTP Email
+        Kafka->>NotificationService: Consume "otp-events"
+        NotificationService->>MailServer: Send OTP Email
+    end
+
+    UI->>Gateway: POST /auth/v1/verify
+    Gateway->>AuthService: Route Request
+    AuthService->>Redis: Validate OTP
+    AuthService->>Kafka: Publish "userEvents" (User Created)
     AuthService-->>Gateway: 200 OK (JWT + Refresh Token)
     Gateway-->>UI: 200 OK (JWT + Refresh Token)
 

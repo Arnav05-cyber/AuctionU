@@ -16,7 +16,7 @@ const PW_RULES = [
 ]
 
 export default function SignupPage() {
-  const { signup } = useAuth()
+  const { signup, verifySignup, login } = useAuth()
   const router = useRouter()
 
   const [form, setForm] = useState({
@@ -30,6 +30,8 @@ export default function SignupPage() {
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [step, setStep] = useState<'form' | 'otp'>('form')
+  const [otp, setOtp] = useState('')
 
   const emailValid = /^[A-Za-z0-9+_.-]+@snu\.edu\.in$/.test(form.email)
   const allPwRulesPass = PW_RULES.every((r) => r.test(form.password))
@@ -50,9 +52,25 @@ export default function SignupPage() {
     setLoading(true)
     try {
       await signup(form)
-      router.push('/')
+      setStep('otp')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Signup failed'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await verifySignup(form.email, otp)
+      await login({ userName: form.email, password: form.password })
+      router.push('/')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Invalid or expired verification code'
       setError(msg)
     } finally {
       setLoading(false)
@@ -79,14 +97,21 @@ export default function SignupPage() {
         {/* Card */}
         <div className="glass rounded-2xl p-8">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-white mb-1">Create your account</h2>
+            <h2 className="text-xl font-semibold text-white mb-1">
+              {step === 'form' ? 'Create your account' : 'Check your email'}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Join your campus marketplace — only <span className="text-emerald-400 font-medium">@snu.edu.in</span> emails allowed
+              {step === 'form' ? (
+                <>Join your campus marketplace — only <span className="text-emerald-400 font-medium">@snu.edu.in</span> emails allowed</>
+              ) : (
+                <>We've sent a 6-digit verification code to <span className="text-white">{form.email}</span></>
+              )}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name row */}
+          {step === 'form' ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Name row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">First Name</label>
@@ -174,6 +199,33 @@ export default function SignupPage() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Account'}
             </Button>
           </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider text-center">Verification Code</label>
+                <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6}
+                  className="w-full h-12 px-4 text-center tracking-[0.5em] text-xl rounded-xl bg-white/[0.03] border border-white/[0.06] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition"
+                  placeholder="------" />
+              </div>
+
+              {error && (
+                <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" disabled={loading || otp.length !== 6} className="w-full" size="lg">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify & Join'}
+              </Button>
+              <button 
+                type="button" 
+                onClick={() => setStep('form')} 
+                className="w-full mt-3 text-xs text-slate-500 hover:text-white transition"
+              >
+                Back to registration
+              </button>
+            </form>
+          )}
 
           <p className="mt-6 text-center text-sm text-slate-500">
             Already have an account?{' '}

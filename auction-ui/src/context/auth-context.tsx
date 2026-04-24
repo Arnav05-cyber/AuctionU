@@ -9,6 +9,7 @@ interface AuthState {
   loading: boolean
   login: (data: LoginRequest) => Promise<void>
   signup: (data: SignupRequest) => Promise<void>
+  verifySignup: (email: string, otp: string) => Promise<void>
   logout: () => Promise<void>
   isAuthenticated: boolean
 }
@@ -68,18 +69,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signup = async (data: SignupRequest) => {
-    const res = await apiFetch<AuthTokens>(
+    await apiFetch<string>(
       "/auth/v1/signup",
       {
         method: "POST",
         body: JSON.stringify(data),
       }
     )
+  }
 
-    setTokens(res.accessToken, res.refreshToken)
-
-    const identity = await authFetch<UserIdentity>("/auth/v1/ping")
-    setUser(identity)
+  const verifySignup = async (email: string, otp: string) => {
+    await apiFetch<string>("/auth/v1/verify-signup", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    })
   }
 
   const logout = async () => {
@@ -93,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, verifySignup, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   )

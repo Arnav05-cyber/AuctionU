@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # ==========================================
@@ -70,12 +70,15 @@ services:
         condition: service_started
       eureka:
         condition: service_started
+      redis:
+        condition: service_started
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/authservice
       - SPRING_DATASOURCE_USERNAME=authuser
       - SPRING_DATASOURCE_PASSWORD=authpassword
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATA_REDIS_HOST=redis
 
   user-service:
     build:
@@ -128,8 +131,8 @@ services:
     environment:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
-      - MAIL_USERNAME=test@example.com
-      - MAIL_PASSWORD=test
+      - MAIL_USERNAME=av846@snu.edu.in
+      - MAIL_PASSWORD=zdpwwfsqllbqsvst
 
   gateway:
     build:
