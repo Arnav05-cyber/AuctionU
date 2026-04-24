@@ -131,8 +131,8 @@ services:
     environment:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
-      - MAIL_USERNAME=av846@snu.edu.in
-      - MAIL_PASSWORD=zdpwwfsqllbqsvst
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
 
   gateway:
     build:

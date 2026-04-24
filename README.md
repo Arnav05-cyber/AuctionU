@@ -122,6 +122,13 @@ Instant visual updates to users using STOMP WebSocket communication dynamically 
 
 The entire environment including the databases, message brokers, caching mechanisms, frontend, and backend JVM instances are bundled natively. Simply run:
 
+Before running, create a local `.env` file (never commit it) from `.env.example` and set:
+
+```bash
+MAIL_USERNAME=your-email@example.com
+MAIL_PASSWORD=your-app-password
+```
+
 ```bash
 docker-compose up --build -d
 ```
