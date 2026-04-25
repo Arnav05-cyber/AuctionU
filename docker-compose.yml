@@ -151,16 +151,16 @@ services:
       - SPRING_DATA_REDIS_PORT=6379
 
   # ==========================================
-  # Frontend
+  # Frontend (now hosted on Vercel)
   # ==========================================
-  auction-ui:
-    build:
-      context: ./auction-ui
-    container_name: auctionu-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - gateway
-    environment:
-      - NEXT_PUBLIC_GATEWAY_URL=http://localhost:8080
-      - NEXT_PUBLIC_GATEWAY_WS_URL=ws://localhost:8080/ws-auction
+  # auction-ui:
+  #   build:
+  #     context: ./auction-ui
+  #   container_name: auctionu-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - gateway
+  #   environment:
+  #     - NEXT_PUBLIC_GATEWAY_URL=http://localhost:8080
+  #     - NEXT_PUBLIC_GATEWAY_WS_URL=ws://localhost:8080/ws-auction

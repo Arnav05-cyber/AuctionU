@@ -11,6 +11,8 @@ spring:
           '[/**]':
             allowedOrigins:
               - "http://localhost:3000"
+              - "https://artless-temika-guiltless.ngrok-free.dev"
+              - "https://*.vercel.app"
             allowedMethods:
               - GET
               - POST
