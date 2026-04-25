@@ -8,7 +8,7 @@ spring:
     gateway:
       globalcors:
         cors-configurations:
-          '[/**]':
+          "[/**]":
             allowedOriginPatterns:
               - "https://*.vercel.app"
             allowedOrigins:
