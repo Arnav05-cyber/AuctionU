@@ -221,7 +221,7 @@ docker-compose up --build -d gateway
 
 ### Access Points
 
-- **Live Frontend**: [https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app](https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app)
+- **Live Frontend**: [https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app](auction-u.vercel.app)
 - **Local Frontend** (optional): `http://localhost:3000` (run `npm run dev` inside `auction-ui/`)
 - **API Gateway**: `http://localhost:8080/` (or via ngrok URL)
 - **Discovery Console**: `http://localhost:8761/` (Eureka dashboard)
