@@ -33,7 +33,7 @@ export default function SignupPage() {
   const [step, setStep] = useState<'form' | 'otp'>('form')
   const [otp, setOtp] = useState('')
 
-  const emailValid = /^[A-Za-z0-9+_.-]+@snu\.edu\.in$/.test(form.email)
+  const emailValid = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(form.email)
   const allPwRulesPass = PW_RULES.every((r) => r.test(form.password))
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +41,7 @@ export default function SignupPage() {
     setError('')
 
     if (!emailValid) {
-      setError('Email must end with @snu.edu.in')
+      setError('Please enter a valid email address')
       return
     }
     if (!allPwRulesPass) {
@@ -107,7 +107,7 @@ export default function SignupPage() {
             </h2>
             <p className="text-sm text-muted-foreground">
               {step === 'form' ? (
-                <>Join your campus marketplace — only <span className="text-emerald-400 font-medium">@snu.edu.in</span> emails allowed</>
+                <>Join the marketplace — sign up with your email to get started</>
               ) : (
                 <>We've sent a 6-digit verification code to <span className="text-white">{form.email}</span></>
               )}
@@ -145,9 +145,9 @@ export default function SignupPage() {
                 className={`w-full h-11 px-4 rounded-xl bg-white/[0.03] border text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 transition ${
                   form.email && !emailValid ? 'border-red-500/40 focus:ring-red-500/30' : 'border-white/[0.06] focus:ring-emerald-500/30'
                 }`}
-                placeholder="yourname@snu.edu.in" />
+                placeholder="you@example.com" />
               {form.email && !emailValid && (
-                <p className="mt-1 text-xs text-red-400">Must be an @snu.edu.in email</p>
+                <p className="mt-1 text-xs text-red-400">Please enter a valid email address</p>
               )}
             </div>
 

@@ -20,9 +20,8 @@ sequenceDiagram
     participant Redis
     participant Database as MySQL Cluster
 
-    UI->>Gateway: POST /auth/v1/signup 
+    UI->>Gateway: POST /auth/v1/signup
     Gateway->>AuthService: Route Request
-    Note right of AuthService: Validates @snu.edu.in domain
     AuthService->>Redis: Store Temporary User & OTP
     AuthService->>Kafka: Publish "otp-events"
     AuthService-->>Gateway: 200 OK (OTP Sent)
@@ -86,24 +85,30 @@ sequenceDiagram
 ## 🌟 Key Features
 
 ### 1. Full-Stack End-to-End Environment
+
 Everything from the sophisticated **TailwindCSS Next.js UI** down to the **Redis WebSocket STOMP relays** is containerized. It works flawlessly under **Docker Compose**, wrapping 11 integrated clusters natively.
 
 ### 2. High Scalability & Event-Driven Operations
+
 The system is engineered to handle high-traffic bidding environments effortlessly:
-- **Stateless Authentication**: Uses **JWT (JSON Web Tokens)** allowing horizontal scaling of the `authService`. Access is strictly limited to university stringents (e.g., matching `@snu.edu.in` constraints). JWT claims embed the `userId` natively, securely translating to the `X-User-Id` header through the API Gateway footprint.
+
+- **Stateless Authentication**: Uses **JWT (JSON Web Tokens)** allowing horizontal scaling of the `authService`.JWT claims embed the `userId` natively, securely translating to the `X-User-Id` header through the API Gateway footprint.
 - **Transactional Outbox Pattern**: Instead of publishing directly to Kafka (risking failure), domain events (`BID_PLACED`, `PURCHASE`, `AUCTION_CLOSED`) are saved atomically to the DB's `outbox` table. A separate polling `OutboxProcessor` guarantees at-least-once message delivery via Kafka.
 - **Distributed Lock Scheduling (ShedLock)**: The automated `AuctionReaper` job uses ShedLock (`shedlock-provider-jdbc-template`) synchronized on MySQL. This completely eliminates race conditions and duplicate auction settlements when scaling instances horizontally.
 
 ### 3. Real-Time Bid Broadcasting (WebSocket + Redis Pub/Sub)
+
 Instant visual updates to users using STOMP WebSocket communication dynamically bridging to the UI dashboard:
+
 1. `ProductService` publishes `"{productId}:New bid: {amount}"` to the **Redis `auction-updates` channel**.
 2. **`RedisSubscriber`** detects and resolves it over STOMP topic `/topic/product/{productId}` via `SimpMessagingTemplate`.
 3. The **Next.js UI (`use-auction-socket.ts`)** immediately updates the React state reflecting live numbers continuously without requiring HTTP refresh loops.
 
 ### 4. Microservices Overview
+
 - **A. UI Frontend (`auction-ui`)**: Next.js App Router featuring responsive Shadcn-UI design, Framer Motion animations, comprehensive Auth caching logic, and `stompjs/sockjs-client` socket channels for live auction interactions.
 - **B. API Gateway (`gateway`)**: Centralized security, rate limiting, token parsing, and service routing. Netty WebFlux server capable of translating CORS correctly and parsing tokens.
-- **C. Auth Service (`authService`)**: Secure enrollment, `@snu.edu.in` enforcement logic with complex password constraints, and JWT issuer.
+- **C. Auth Service (`authService`)**: Secure enrollment with complex password constraints, OTP-based email verification, and JWT issuer.
 - **D. User Service (`userService`)**: Independent persistence of user profiles communicating through shared secrets restricting any external endpoint hijacking.
 - **E. Product Service (`productService`)**: Core logistics engine governing the business rules behind `AUCTION` and `FIXED_PRICE` sales types.
 - **F. Notification Service (`notificationService`)**: Spring Boot Mail / Thymeleaf engine listening on consumers (`otp-events`, `product-events`) and sending emails via SMTP using Eureka + OpenFeign. This service is intentionally stateless in the current implementation (no JPA entities/repositories), so the `notificationservice` MySQL schema exists but has no application tables.
@@ -134,17 +139,20 @@ docker-compose up --build -d
 ```
 
 ### What happens?
+
 1. The `mysql:8.0` cluster boots up and initializes service schemas via `init.sql`; only services that persist domain state create tables (for example, product service tables such as `shedlock`), while `notificationService` currently keeps no DB tables by design.
 2. Infrastructure shards `zookeeper`, `kafka`, `eureka-server`, and `redis-alpine` boot alongside one another.
 3. Every individual Spring Boot service successfully compiles inside multi-stage `eclipse-temurin` pipelines and starts, connecting and automatically registering their domains natively to the `eureka` discovery pipeline.
 4. Finally, the **Next.js UI container** builds and spins up at port `3000`.
 
 ### Access Matrices
+
 - **Frontend Dashboard**: `http://localhost:3000` (Visit this visually to view the platform)
 - **API Gateway Base**: `http://localhost:8080/` (REST communication footprint)
 - **Discovery Console**: `http://localhost:8761/` (Eureka Load Balancer console tracking node health statuses)
 
 ### Stopping
+
 ```bash
 docker-compose down
 ```
