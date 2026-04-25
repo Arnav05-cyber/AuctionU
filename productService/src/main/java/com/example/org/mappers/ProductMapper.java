@@ -20,6 +20,7 @@ public interface ProductMapper {
     @Mapping(target = "highestBidderId", ignore = true) // New field from our entity update
     Product toEntity(ProductRequestDto productRequestDto);
 
+    @Mapping(target = "saleType", source = "type")
     @Mapping(target = "isExpired", source = "product", qualifiedByName = "calculateExpiry")
     ProductResponseDto toDto(Product product);
 
