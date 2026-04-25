@@ -123,19 +123,85 @@ Instant visual updates to users using STOMP WebSocket communication dynamically 
 - **DevOps**: Docker, Docker Compose, Flyway/Init SQLs
 - **Protocols**: WebSocket (STOMP)/SockJS, REST, JWT Authentication
 
-## 🏃‍♂️ Running the Project (Docker Compose)
+## 🌐 Live Demo
 
-The entire environment including the databases, message brokers, caching mechanisms, frontend, and backend JVM instances are bundled natively. Simply run:
+**Frontend (Vercel)**: [https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app](https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app)
 
-Before running, create a local `.env` file (never commit it) from `.env.example` and set:
+> **Note**: The backend runs locally via Docker and is exposed through ngrok. The live demo requires the backend to be running on the developer's machine.
+
+## 🏗️ Deployment Architecture
+
+The project uses a **hybrid deployment** model:
+
+```
+┌──────────────────┐         ┌─────────────────────────────────┐
+│   Vercel Cloud   │         │     Local Machine (Docker)      │
+│                  │  HTTPS  │                                 │
+│  auction-ui      │ ◄─────► │  ngrok ──► Gateway (:8080)      │
+│  (Next.js)       │         │              │                  │
+│                  │         │     ┌────────┼────────┐         │
+└──────────────────┘         │     ▼        ▼        ▼         │
+                             │  Auth    Product   User         │
+                             │  Service  Service  Service      │
+                             │     │        │        │         │
+                             │  MySQL  Kafka  Redis  Eureka    │
+                             └─────────────────────────────────┘
+```
+
+- **Frontend**: Deployed on **Vercel**, auto-deploys on push to `main`
+- **Backend**: All Spring Boot microservices + infrastructure run locally via **Docker Compose**
+- **Tunnel**: **ngrok** exposes the local API Gateway (`localhost:8080`) to the internet, allowing the Vercel-hosted frontend to communicate with the backend
+
+## 🏃‍♂️ Running the Project
+
+### Prerequisites
+
+- Docker & Docker Compose
+- [ngrok](https://ngrok.com) (free account, authenticated)
+
+### 1. Configure Environment
+
+Create a local `.env` file (never commit it) from `.env.example`:
 
 ```bash
 MAIL_USERNAME=your-email@example.com
 MAIL_PASSWORD=your-app-password
 ```
 
+### 2. Start the Backend
+
 ```bash
 docker-compose up --build -d
+```
+
+This boots up MySQL, Zookeeper, Kafka, Redis, Eureka, and all Spring Boot microservices (auth, user, product, notification, gateway).
+
+### 3. Expose the Backend via ngrok
+
+```bash
+ngrok http 8080
+```
+
+Copy the generated HTTPS URL (e.g., `https://xxxx.ngrok-free.dev`).
+
+### 4. Update Vercel Environment Variables
+
+In the [Vercel Dashboard](https://vercel.com) → Project Settings → Environment Variables, set:
+
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_GATEWAY_URL` | `https://xxxx.ngrok-free.dev` |
+| `NEXT_PUBLIC_GATEWAY_WS_URL` | `wss://xxxx.ngrok-free.dev/ws-auction` |
+
+Then trigger a redeployment for the changes to take effect.
+
+### 5. Update Gateway CORS (if ngrok URL changed)
+
+Add the new ngrok URL to `gateway/app/src/main/resources/application.yml` under `allowedOrigins`, rebuild the gateway, and restart:
+
+```bash
+cd gateway && ./gradlew clean build -x test && cd ..
+docker-compose up --build -d gateway
 ```
 
 ### What happens?
@@ -143,16 +209,20 @@ docker-compose up --build -d
 1. The `mysql:8.0` cluster boots up and initializes service schemas via `init.sql`; only services that persist domain state create tables (for example, product service tables such as `shedlock`), while `notificationService` currently keeps no DB tables by design.
 2. Infrastructure shards `zookeeper`, `kafka`, `eureka-server`, and `redis-alpine` boot alongside one another.
 3. Every individual Spring Boot service successfully compiles inside multi-stage `eclipse-temurin` pipelines and starts, connecting and automatically registering their domains natively to the `eureka` discovery pipeline.
-4. Finally, the **Next.js UI container** builds and spins up at port `3000`.
+4. ngrok tunnels external HTTPS traffic to the local Gateway on port `8080`.
+5. The Vercel-hosted frontend communicates with the backend through the ngrok tunnel.
 
-### Access Matrices
+### Access Points
 
-- **Frontend Dashboard**: `http://localhost:3000` (Visit this visually to view the platform)
-- **API Gateway Base**: `http://localhost:8080/` (REST communication footprint)
-- **Discovery Console**: `http://localhost:8761/` (Eureka Load Balancer console tracking node health statuses)
+- **Live Frontend**: [https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app](https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app)
+- **Local Frontend** (optional): `http://localhost:3000` (run `npm run dev` inside `auction-ui/`)
+- **API Gateway**: `http://localhost:8080/` (or via ngrok URL)
+- **Discovery Console**: `http://localhost:8761/` (Eureka dashboard)
+- **ngrok Inspector**: `http://localhost:4040` (monitor tunneled requests)
 
 ### Stopping
 
 ```bash
 docker-compose down
 ```
+

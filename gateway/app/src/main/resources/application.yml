@@ -9,10 +9,12 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
+            allowedOriginPatterns:
+              - "https://*.vercel.app"
             allowedOrigins:
               - "http://localhost:3000"
               - "https://artless-temika-guiltless.ngrok-free.dev"
-              - "https://*.vercel.app"
+              - "https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app"
             allowedMethods:
               - GET
               - POST
