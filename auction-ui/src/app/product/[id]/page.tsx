@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import type { Product } from '@/types/auction'
 import {
   ArrowLeft, Gavel, ShoppingCart, Timer, TrendingUp, Package,
-  Zap, Loader2, User, Clock,
+  Zap, Loader2, User, Clock, Trash2,
 } from 'lucide-react'
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,6 +26,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [purchaseQty, setPurchaseQty] = useState(1)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionMsg, setActionMsg] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const { bidUpdates, subscribeTo, connected } = useAuctionSocket()
   const liveBid = bidUpdates.get(Number(id))
@@ -93,6 +94,18 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     } catch (err) {
       setActionMsg(err instanceof Error ? err.message : 'Purchase failed')
     } finally { setActionLoading(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this listing? This cannot be undone.')) return
+    setDeleteLoading(true)
+    try {
+      await authFetch(`/api/v1/products/${id}`, { method: 'DELETE' })
+      router.push(isAuction ? '/' : '/marketplace')
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : 'Delete failed')
+      setDeleteLoading(false)
+    }
   }
 
   if (authLoading || loading) {
@@ -241,9 +254,26 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                       {actionMsg}
                     </div>
                   )}
-                </div>
               </div>
-            </div>
+
+                {/* Delete button — seller only */}
+                {user?.userId === product.sellerId && (
+                  <div className="rounded-xl bg-red-500/[0.04] border border-red-500/10 p-5">
+                    <h3 className="text-sm font-semibold text-red-400 flex items-center gap-2 mb-3">
+                      <Trash2 className="w-4 h-4" />Danger Zone
+                    </h3>
+                    <p className="text-xs text-slate-500 mb-4">Permanently remove this listing. This action cannot be undone.</p>
+                    <Button
+                      variant="outline"
+                      onClick={handleDelete}
+                      disabled={deleteLoading}
+                      className="w-full border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/30"
+                    >
+                      {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4" />Delete Listing</>}
+                    </Button>
+                  </div>
+                )}
+              </div>
           </div>
         </motion.div>
       </div>

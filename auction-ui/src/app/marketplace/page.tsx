@@ -99,7 +99,7 @@ export default function MarketplacePage() {
           <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <AnimatePresence mode="popLayout">
               {filtered.map((product) => (
-                <AuctionCard key={product.id} product={product} />
+                <AuctionCard key={product.id} product={product} onDelete={(id) => setProducts((prev) => prev.filter((p) => p.id !== id))} />
               ))}
             </AnimatePresence>
           </motion.div>

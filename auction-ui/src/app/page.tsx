@@ -180,7 +180,7 @@ export default function AuctionsPage() {
           <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <AnimatePresence mode="popLayout">
               {filtered.map((product) => (
-                <AuctionCard key={product.id} product={product} liveBid={bidUpdates.get(product.id)} />
+                <AuctionCard key={product.id} product={product} liveBid={bidUpdates.get(product.id)} onDelete={(id) => setAuctions((prev) => prev.filter((a) => a.id !== id))} />
               ))}
             </AnimatePresence>
           </motion.div>

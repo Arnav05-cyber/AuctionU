@@ -54,4 +54,15 @@ public class ProductController {
         return ResponseEntity.ok(Map.of("message", "Purchase successful"));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long id, @RequestHeader("X-User-Id") String userId) {
+        // Fetch the product to verify ownership
+        ProductResponseDto product = productService.getProductById(id);
+        if (!product.getSellerId().equals(userId)) {
+            return ResponseEntity.status(403).body(Map.of("message", "Only the seller can delete this product"));
+        }
+        productService.deleteProductById(id);
+        return ResponseEntity.ok(Map.of("message", "Product deleted successfully"));
+    }
+
 }

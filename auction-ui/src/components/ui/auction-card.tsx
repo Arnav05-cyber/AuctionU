@@ -8,17 +8,19 @@ import { Button } from '@/components/ui/button'
 import { useCountdown } from '@/hooks/use-countdown'
 import { authFetch } from '@/lib/api'
 import { useAuth } from '@/context/auth-context'
-import { Timer, Gavel, TrendingUp, Zap, ShoppingCart, Package } from 'lucide-react'
+import { Timer, Gavel, TrendingUp, Zap, ShoppingCart, Package, Trash2 } from 'lucide-react'
 import type { Product } from '@/types/auction'
 
 interface AuctionCardProps {
   product: Product
   liveBid?: number
+  onDelete?: (productId: number) => void
 }
 
-export const AuctionCard = memo(function AuctionCard({ product, liveBid }: AuctionCardProps) {
+export const AuctionCard = memo(function AuctionCard({ product, liveBid, onDelete }: AuctionCardProps) {
   const { user } = useAuth()
   const { title, currentHighestBid, auctionEndTime, status, saleType, buyItNowPrice, quantity } = product
+  const [deleting, setDeleting] = useState(false)
   const isAuction = saleType === 'AUCTION'
   const displayBid = liveBid ?? (currentHighestBid ?? 0)
   const countdown = useCountdown(auctionEndTime ?? new Date().toISOString())
@@ -65,6 +67,22 @@ export const AuctionCard = memo(function AuctionCard({ product, liveBid }: Aucti
     setBidding(false)
   }
 
+  const isOwner = user?.userId === product.sellerId
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirm('Are you sure you want to delete this listing? This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      await authFetch(`/api/v1/products/${product.id}`, { method: 'DELETE' })
+      onDelete?.(product.id)
+    } catch {
+      // Would show toast in production
+    }
+    setDeleting(false)
+  }
+
   const isLive = status === 'ACTIVE' && (isAuction ? !countdown.expired : true)
   const urgency = isAuction && !countdown.expired && countdown.hours === 0 && countdown.minutes < 10
 
@@ -99,11 +117,23 @@ export const AuctionCard = memo(function AuctionCard({ product, liveBid }: Aucti
               {isAuction ? (isLive ? 'LIVE AUCTION' : status) : 'BUY NOW'}
             </Badge>
           </div>
-          {urgency && isLive && (
-            <Badge variant="destructive" className="text-[10px]">
-              <Zap className="w-3 h-3 mr-1" />ENDING SOON
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {urgency && isLive && (
+              <Badge variant="destructive" className="text-[10px]">
+                <Zap className="w-3 h-3 mr-1" />ENDING SOON
+              </Badge>
+            )}
+            {isOwner && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                title="Delete listing"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors duration-200 disabled:opacity-50 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Title */}

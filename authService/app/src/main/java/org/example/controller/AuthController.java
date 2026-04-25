@@ -191,4 +191,34 @@ public class AuthController {
                 })
                 .orElseThrow(() -> new RuntimeException("Refresh token is not in database!"));
     }
+
+    /**
+     * DELETE ACCOUNT
+     * Permanently deletes the authenticated user's account.
+     * Removes refresh tokens and the user record from the auth database.
+     */
+    @DeleteMapping("/delete-account")
+    public ResponseEntity<?> deleteAccount() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+            }
+
+            Object principal = authentication.getPrincipal();
+            if (!(principal instanceof UserInfo user)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+            }
+
+            // 1. Delete refresh tokens
+            refreshTokenService.deleteByUser(user);
+
+            // 2. Delete the user record
+            userRepo.delete(user);
+
+            return ResponseEntity.ok(java.util.Map.of("message", "Account deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to delete account: " + e.getMessage());
+        }
+    }
 }

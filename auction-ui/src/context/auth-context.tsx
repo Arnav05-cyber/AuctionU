@@ -11,6 +11,7 @@ interface AuthState {
   signup: (data: SignupRequest) => Promise<void>
   verifySignup: (email: string, otp: string) => Promise<void>
   logout: () => Promise<void>
+  deleteAccount: () => Promise<void>
   isAuthenticated: boolean
 }
 
@@ -95,8 +96,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const deleteAccount = async () => {
+    try {
+      // Delete user profile first
+      await authFetch("/api/v1/users/me", { method: "DELETE" }).catch(() => {})
+      // Delete auth account and tokens
+      await authFetch("/auth/v1/delete-account", { method: "DELETE" })
+    } finally {
+      clearTokens()
+      setUser(null)
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, verifySignup, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, verifySignup, logout, deleteAccount, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   )

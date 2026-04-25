@@ -61,4 +61,8 @@ public class UserService {
                 .build();
     }
 
+    public void deleteUser(String userId) {
+        userRepository.deleteById(userId);
+    }
+
 }

@@ -74,12 +74,14 @@ export function Navbar() {
                   </Button>
                 </Link>
 
-                <div className="flex items-center gap-2 glass rounded-lg px-3 py-1.5">
-                  <User className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-xs text-slate-300 font-medium max-w-[100px] truncate">
-                    {user?.username}
-                  </span>
-                </div>
+                <Link href="/settings">
+                  <div className="flex items-center gap-2 glass hover:bg-emerald-500/10 transition-colors rounded-lg px-3 py-1.5 cursor-pointer">
+                    <User className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-xs text-slate-300 font-medium max-w-[100px] truncate">
+                      {user?.username}
+                    </span>
+                  </div>
+                </Link>
 
                 <Button variant="ghost" size="icon" onClick={logout} title="Logout">
                   <LogOut className="w-4 h-4" />

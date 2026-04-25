@@ -104,7 +104,14 @@ Instant visual updates to users using STOMP WebSocket communication dynamically 
 2. **`RedisSubscriber`** detects and resolves it over STOMP topic `/topic/product/{productId}` via `SimpMessagingTemplate`.
 3. The **Next.js UI (`use-auction-socket.ts`)** immediately updates the React state reflecting live numbers continuously without requiring HTTP refresh loops.
 
-### 4. Microservices Overview
+### 4. Data Privacy & Listing Control
+
+Users retain full control over their presence and interactions on the platform:
+
+- **Listing Management**: Sellers can instantly remove their own active listings (both fixed-price and auctions) securely via the UI, backed by robust `X-User-Id` gateway verification and a `DELETED` soft-delete state for audit trails.
+- **Account Deletion**: Complete self-service account deletion securely wipes all local session data, cascades the destruction of JWT refresh tokens from the `authService`, and permanently removes profile telemetry across the `userService`.
+
+### 5. Microservices Overview
 
 - **A. UI Frontend (`auction-ui`)**: Next.js App Router featuring responsive Shadcn-UI design, Framer Motion animations, comprehensive Auth caching logic, and `stompjs/sockjs-client` socket channels for live auction interactions.
 - **B. API Gateway (`gateway`)**: Centralized security, rate limiting, token parsing, and service routing. Netty WebFlux server capable of translating CORS correctly and parsing tokens.

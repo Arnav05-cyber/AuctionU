@@ -52,4 +52,17 @@ public class UserController {
             return ResponseEntity.status(500).build();
         }
     }
+
+    @DeleteMapping("/api/v1/users/me")
+    public ResponseEntity<?> deleteMyProfile(@RequestHeader("X-User-Id") String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return ResponseEntity.status(401).body(java.util.Map.of("message", "Unauthorized"));
+        }
+        try {
+            userService.deleteUser(userId);
+            return ResponseEntity.ok(java.util.Map.of("message", "User profile deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
 }
