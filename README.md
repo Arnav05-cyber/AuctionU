@@ -132,7 +132,7 @@ Users retain full control over their presence and interactions on the platform:
 
 ## 🌐 Live Demo
 
-**Frontend (Vercel)**: [https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app](https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app)
+**Frontend (Vercel)**: [https://auction-o42wxhnf3-arnavs-projects-ffeca390.vercel.app](auction-u.vercel.app)
 
 > **Note**: The backend runs locally via Docker and is exposed through ngrok. The live demo requires the backend to be running on the developer's machine.
 
